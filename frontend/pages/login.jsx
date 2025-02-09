@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -8,21 +9,21 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const response = await fetch("http://localhost:5000/api/login", {
-      method: "POST",
-      credentials: "include", // ✅ Important for CORS
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await response.json();
-    console.log(data)
-    if (data.success) {
-      localStorage.setItem("token", data.token);
-      navigate("/dashboard");
-    } else {
-      alert(data.message);
+    try {
+      const response = await axios.post(
+        "http://localhost:8080/api/auth/login",
+        { email, password },
+        { withCredentials: true } // ✅ Ensures cookies/auth headers are sent
+      );
+
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        navigate("/dashboard");
+      } else {
+        alert(response.data.message);
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || "Login failed!");
     }
   };
 

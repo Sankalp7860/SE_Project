@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Register = () => {
   const [name, setName] = useState("");
@@ -9,20 +10,21 @@ const Register = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    console.log(name+" "+email+" "+password);
-    const response = await fetch("http://localhost:5000/api/login", {
-      method: "POST",
-      credentials: "include", // ✅ Important for CORS
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await response.json();
-    if (data.success) {
-      navigate("/login");
-    } else {
-      alert(data.message);
+    
+    try {
+      const response = await axios.post(
+        "http://localhost:8080/api/auth/register",
+        { name, email, password },
+        { withCredentials: true } // ✅ Ensures cookies/auth headers are sent
+      );
+
+      if (response.data.token) {
+        navigate("/login");
+      } else {
+        alert(response.data.message);
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || "Registration failed!");
     }
   };
 
