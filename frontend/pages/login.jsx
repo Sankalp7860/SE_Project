@@ -36,7 +36,7 @@ const Login = () => {
         <div className="login-box">
           <div className="logo">
             <div className="music-note">♪</div>
-            <h1>Melodify</h1>
+            <h1>MoodTunes</h1>
           </div>
           <h2 className="login-title">Sign in to your account</h2>
           <form onSubmit={handleLogin} className="login-form">
