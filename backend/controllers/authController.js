@@ -11,7 +11,7 @@ const registerUser = async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        // Create user without password encryption
+        // Create user with hashed password
         const user = await Test.create({ name, email, password });
 
         if (user) {
@@ -35,7 +35,8 @@ const loginUser = async (req, res) => {
     try {
         const user = await Test.findOne({ email });
 
-        if (!user || user.password !== password) {
+        // Check if user exists and password matches
+        if (!user || !(await user.matchPassword(password))) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
