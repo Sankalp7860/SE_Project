@@ -36,7 +36,7 @@ const Register = () => {
         <div className="login-box">
           <div className="logo">
             <div className="music-note">♪</div>
-            <h1>Melodify</h1>
+            <h1>MoodTunes</h1>
           </div>
           <h2 className="login-title">Create your account</h2>
           <form onSubmit={handleRegister} className="login-form">
