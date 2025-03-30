@@ -144,7 +144,7 @@ const Explore = () => {
       <main className="flex-1 p-4 md:p-6 max-w-screen-xl mx-auto w-full">
         {/* Mood filter */}
         <div className="overflow-x-auto mb-8 pb-2">
-          <div className="flex space-x-3">
+          <div className="flex space-x-3 justify-center align-center">
             {moods.map((mood) => (
               <div key={mood.name} className="w-28 flex-shrink-0">
                 <MoodCard
