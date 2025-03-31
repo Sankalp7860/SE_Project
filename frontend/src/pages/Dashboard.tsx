@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -9,111 +8,97 @@ import { toast } from 'sonner';
 import { LogOut, Trash } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// Mock data for history
-const mockHistory = [
-  { 
-    id: '1',
-    mood: 'Happy', 
-    date: '10/03/2025', 
-    time: '19:49',
-    songs: [
-      { id: '1a', title: 'Happy Upbeat Pop', artist: 'UniqueSound' },
-      { id: '1b', title: 'Summer Vibes', artist: 'HappyTunes' },
-    ]
-  },
-  { 
-    id: '2',
-    mood: 'Happy', 
-    date: '10/03/2025', 
-    time: '19:49',
-    songs: [
-      { id: '2a', title: 'Sunny Day', artist: 'MoodBoost' },
-    ]
-  },
-  { 
-    id: '3',
-    mood: 'Happy', 
-    date: '10/03/2025', 
-    time: '19:48',
-    songs: [
-      { id: '3a', title: 'Morning Energy', artist: 'DailyBeats' },
-      { id: '3b', title: 'Positive Thinking', artist: 'MindfulMusic' },
-    ]
-  },
-  { 
-    id: '4',
-    mood: 'Happy', 
-    date: '10/03/2025', 
-    time: '19:48',
-    songs: [
-      { id: '4a', title: 'Uplifting Melody', artist: 'SpiritSound' },
-    ]
-  },
-  { 
-    id: '5',
-    mood: 'Happy', 
-    date: '10/03/2025', 
-    time: '19:48',
-    songs: [
-      { id: '5a', title: 'Joyful Morning', artist: 'DawnMusic' },
-    ]
-  },
-  { 
-    id: '6',
-    mood: 'Happy', 
-    date: '10/03/2025', 
-    time: '19:48',
-    songs: [
-      { id: '6a', title: 'Cheerful Day', artist: 'SunnyBeats' },
-    ]
-  },
-  { 
-    id: '7',
-    mood: 'Happy', 
-    date: '10/03/2025', 
-    time: '19:46',
-    songs: [
-      { id: '7a', title: 'Feel Good', artist: 'PositiveVibes' },
-    ]
-  },
-  { 
-    id: '8',
-    mood: 'Sad', 
-    date: '10/03/2025', 
-    time: '19:46',
-    songs: [
-      { id: '8a', title: 'Melancholy Memories', artist: 'DeepEmotions' },
-    ]
-  },
-];
-
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [history, setHistory] = useState(mockHistory);
-  
-  const handleClearHistory = () => {
-    toast.success('History cleared successfully');
-    setHistory([]);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // ✅ Fetch history from backend
+  const fetchHistory = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('No token found. Please log in again.');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5050/api/history', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast.error(`Failed to fetch history: ${errorData.message}`);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      setHistory(data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching history:', error);
+      toast.error('Error fetching history.');
+      setLoading(false);
+    }
   };
-  
+
+  // ✅ Clear history
+  const handleClearHistory = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('No token found.');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5050/api/history', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast.error(`Failed to clear history: ${errorData.message}`);
+        return;
+      }
+
+      toast.success('History cleared successfully');
+      setHistory([]);
+    } catch (error) {
+      console.error('Error clearing history:', error);
+      toast.error('Error clearing history.');
+    }
+  };
+
+  // ✅ Logout handler
   const handleLogout = () => {
     logout();
     navigate('/login');
     toast.success('Logged out successfully');
   };
-  
-  // Protect route
+
+  // ✅ Fetch history on component mount
   useEffect(() => {
     if (!user) {
       navigate('/login');
+    } else {
+      fetchHistory();
     }
   }, [user, navigate]);
-  
+
   if (!user) return null;
-  
+
   return (
     <div className="min-h-screen flex flex-col">
+      
       {/* Header */}
       <header className="sticky top-0 z-10 backdrop-blur-md bg-background/80 border-b border-white/10 p-4">
         <div className="max-w-screen-xl mx-auto flex items-center justify-between">
@@ -181,17 +166,25 @@ const Dashboard = () => {
             <span>Clear history</span>
           </motion.button>
         </div>
-        
+
         {/* History list */}
         <div className="space-y-4">
-          {history.length > 0 ? (
-            history.map((item) => (
+          {loading ? (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground">Loading history...</p>
+            </div>
+          ) : history.length > 0 ? (
+            history.map((item: any) => (
               <HistoryItem
-                key={item.id}
+                key={item._id}
                 mood={item.mood}
                 date={item.date}
                 time={item.time}
-                songs={item.songs}
+                songs={[{
+                  id: item._id,
+                  title: item.songTitle,
+                  artist: item.artist
+                }]}
               />
             ))
           ) : (
