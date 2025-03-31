@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -8,9 +7,20 @@ interface PlayerContextType {
   currentSongArtist: string;
   currentSongThumbnail: string;
   isPlaying: boolean;
-  playSong: (id: string, title: string, artist: string, thumbnail: string) => void;
+  playQueue: Song[];
+  currentSongIndex: number;
+  playSong: (id: string, title: string, artist: string, thumbnail: string, queue?: Song[]) => void;
+  playNext: () => void;
+  playPrevious: () => void;
   stopPlayback: () => void;
   setIsPlaying: (playing: boolean) => void;
+}
+
+interface Song {
+  id: string;
+  title: string;
+  artist: string;
+  thumbnailUrl: string;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -21,16 +31,69 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentSongArtist, setCurrentSongArtist] = useState('');
   const [currentSongThumbnail, setCurrentSongThumbnail] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playQueue, setPlayQueue] = useState<Song[]>([]);
+  const [currentSongIndex, setCurrentSongIndex] = useState(-1);
 
-  const playSong = (id: string, title: string, artist: string, thumbnail: string) => {
+  const playSong = (id: string, title: string, artist: string, thumbnail: string, queue?: Song[]) => {
     setCurrentSongId(id);
     setCurrentSongTitle(title);
     setCurrentSongArtist(artist);
     setCurrentSongThumbnail(thumbnail);
     setIsPlaying(true);
     
+    // If a queue is provided, use it and set the current index
+    if (queue && queue.length > 0) {
+      setPlayQueue(queue);
+      const index = queue.findIndex(song => song.id === id);
+      setCurrentSongIndex(index !== -1 ? index : 0);
+    } else if (playQueue.length === 0) {
+      // If no queue exists, create one with just this song
+      setPlayQueue([{ id, title, artist, thumbnailUrl: thumbnail }]);
+      setCurrentSongIndex(0);
+    }
+    
     toast.success(`Now playing: ${title}`, {
       description: artist,
+      duration: 3000,
+    });
+  };
+
+  const playNext = () => {
+    if (playQueue.length === 0 || currentSongIndex === -1) return;
+    
+    // Calculate next index (loop back to beginning if at the end)
+    const nextIndex = (currentSongIndex + 1) % playQueue.length;
+    const nextSong = playQueue[nextIndex];
+    
+    // Play the next song
+    setCurrentSongId(nextSong.id);
+    setCurrentSongTitle(nextSong.title);
+    setCurrentSongArtist(nextSong.artist);
+    setCurrentSongThumbnail(nextSong.thumbnailUrl);
+    setCurrentSongIndex(nextIndex);
+    
+    toast.success(`Now playing: ${nextSong.title}`, {
+      description: nextSong.artist,
+      duration: 3000,
+    });
+  };
+
+  const playPrevious = () => {
+    if (playQueue.length === 0 || currentSongIndex === -1) return;
+    
+    // Calculate previous index (loop to the end if at the beginning)
+    const prevIndex = (currentSongIndex - 1 + playQueue.length) % playQueue.length;
+    const prevSong = playQueue[prevIndex];
+    
+    // Play the previous song
+    setCurrentSongId(prevSong.id);
+    setCurrentSongTitle(prevSong.title);
+    setCurrentSongArtist(prevSong.artist);
+    setCurrentSongThumbnail(prevSong.thumbnailUrl);
+    setCurrentSongIndex(prevIndex);
+    
+    toast.success(`Now playing: ${prevSong.title}`, {
+      description: prevSong.artist,
       duration: 3000,
     });
   };
@@ -51,7 +114,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         currentSongArtist,
         currentSongThumbnail,
         isPlaying,
+        playQueue,
+        currentSongIndex,
         playSong,
+        playNext,
+        playPrevious,
         stopPlayback,
         setIsPlaying,
       }}
