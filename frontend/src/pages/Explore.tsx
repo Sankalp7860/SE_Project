@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -83,6 +82,11 @@ const Explore = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleSongPlay = (song: Song) => {
+    // Pass the entire song queue along with the selected song
+    playSong(song.id, song.title, song.artist, song.thumbnailUrl, songs);
   };
   
   const moods = [
@@ -219,6 +223,7 @@ const Explore = () => {
                 title={song.title}
                 artist={song.artist}
                 thumbnailUrl={song.thumbnailUrl}
+                onClick={() => handleSongPlay(song)}
               />
             ))}
           </div>
