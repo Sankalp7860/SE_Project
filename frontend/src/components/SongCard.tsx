@@ -1,9 +1,7 @@
-
 import { useState } from 'react';
 import { Play, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerContext } from '@/context/PlayerContext';
-import { motion } from 'framer-motion';
 
 interface SongCardProps {
   id: string;
@@ -11,22 +9,27 @@ interface SongCardProps {
   artist: string;
   thumbnailUrl: string;
   previewAvailable?: boolean;
+  onClick?: () => void;
 }
 
-const SongCard = ({ 
-  id, 
-  title, 
-  artist, 
-  thumbnailUrl, 
-  previewAvailable = true 
+const SongCard = ({
+  id,
+  title,
+  artist,
+  thumbnailUrl,
+  previewAvailable = true,
+  onClick
 }: SongCardProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const { playSong, currentSongId } = usePlayerContext();
   const isPlaying = currentSongId === id;
   
-  const handlePlayClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    playSong(id, title, artist, thumbnailUrl);
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      playSong(id, title, artist, thumbnailUrl);
+    }
   };
   
   const handleLikeClick = (e: React.MouseEvent) => {
@@ -35,46 +38,43 @@ const SongCard = ({
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
-      className="music-card"
+    <div 
+      className="bg-card rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer group"
+      onClick={handleClick}
     >
-      <div className="relative aspect-video rounded-lg overflow-hidden bg-black/20">
+      <div className="aspect-video relative overflow-hidden">
         <img 
           src={thumbnailUrl} 
           alt={title}
-          className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-          loading="lazy"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
-        <div className="music-card-hover">
-          <button 
-            onClick={handlePlayClick}
-            className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full transition-transform duration-300 hover:scale-110"
-            disabled={!previewAvailable}
-          >
-            <Play size={20} fill="white" />
-          </button>
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <div className="bg-white rounded-full p-3">
+            <Play className="text-black" size={24} />
+          </div>
         </div>
+        
         <button 
           onClick={handleLikeClick}
-          className={cn(
-            "absolute top-2 right-2 p-1.5 rounded-full transition-colors",
-            isLiked ? "bg-white text-red-500" : "bg-black/30 text-white hover:text-red-400"
-          )}
+          className="absolute top-2 right-2 bg-white/80 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
+          <Heart 
+            className={cn("transition-colors", isLiked ? "fill-red-500 text-red-500" : "text-gray-700")} 
+            size={18} 
+          />
         </button>
       </div>
-      <div className="mt-2">
-        <h3 className="font-medium text-sm truncate">{title}</h3>
-        <p className="text-xs text-muted-foreground truncate">{artist}</p>
+      
+      <div className="p-3">
+        <h3 className="font-medium line-clamp-1">{title}</h3>
+        <p className="text-sm text-muted-foreground line-clamp-1">{artist}</p>
         {previewAvailable && (
-          <p className="text-xs text-blue-400 mt-1">Preview Available</p>
+          <span className="text-xs text-emerald-600 mt-1 inline-block">
+            Preview Available
+          </span>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 };
 

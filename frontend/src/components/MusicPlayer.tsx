@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,7 +16,9 @@ const MusicPlayer = () => {
     currentSongThumbnail,
     isPlaying,
     setIsPlaying,
-    stopPlayback
+    stopPlayback,
+    playNext,
+    playPrevious
   } = usePlayerContext();
 
   const {
@@ -35,6 +36,14 @@ const MusicPlayer = () => {
 
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying);
+  };
+
+  const handleSkipNext = () => {
+    playNext();
+  };
+
+  const handleSkipPrevious = () => {
+    playPrevious();
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -82,7 +91,10 @@ const MusicPlayer = () => {
           {/* Player controls */}
           <div className="flex flex-col items-center flex-1 max-w-md px-4">
             <div className="flex items-center space-x-4 mb-1">
-              <button className="text-muted-foreground hover:text-white transition-colors">
+              <button 
+                onClick={handleSkipPrevious}
+                className="text-muted-foreground hover:text-white transition-colors"
+              >
                 <SkipBack size={20} />
               </button>
               <button 
@@ -91,7 +103,10 @@ const MusicPlayer = () => {
               >
                 {isPlaying ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}
               </button>
-              <button className="text-muted-foreground hover:text-white transition-colors">
+              <button 
+                onClick={handleSkipNext}
+                className="text-muted-foreground hover:text-white transition-colors"
+              >
                 <SkipForward size={20} />
               </button>
             </div>
