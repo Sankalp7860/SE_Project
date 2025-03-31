@@ -84,8 +84,48 @@ const Explore = () => {
     navigate('/login');
   };
 
-  const handleSongPlay = (song: Song) => {
+  const handleSongPlay = async (song: Song) => {
     // Pass the entire song queue along with the selected song
+    console.log("mood")
+
+    // History details to save
+    const historyData = {
+        artist: song.artist,             // Song artist
+        date: new Date().toISOString().split('T')[0], // Current date in YYYY-MM-DD format
+        time: new Date().toLocaleTimeString(),       // Current time in HH:MM:SS AM/PM formattime:,
+        songTitle: song.title,
+        mood: selectedMood                     // Mood from props
+    };
+
+    // Get JWT token from localStorage
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        console.error('No token found');
+        return;
+    }
+
+    try {
+        const response = await fetch('http://localhost:5050/api/history', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`  // Send token for authentication
+            },
+            body: JSON.stringify(historyData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Failed to add history:', errorData.message);
+            return;
+        }
+
+        const result = await response.json();
+        console.log('History added successfully:', result);
+    } catch (error) {
+        console.error('Error adding history:', error);
+    }
     playSong(song.id, song.title, song.artist, song.thumbnailUrl, songs);
   };
   
@@ -223,6 +263,7 @@ const Explore = () => {
                 title={song.title}
                 artist={song.artist}
                 thumbnailUrl={song.thumbnailUrl}
+                mood = {selectedMood}
                 onClick={() => handleSongPlay(song)}
               />
             ))}

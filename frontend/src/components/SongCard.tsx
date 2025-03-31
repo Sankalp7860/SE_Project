@@ -9,6 +9,7 @@ interface SongCardProps {
   artist: string;
   thumbnailUrl: string;
   previewAvailable?: boolean;
+  mood: string;
   onClick?: () => void;
 }
 
@@ -18,13 +19,14 @@ const SongCard = ({
   artist,
   thumbnailUrl,
   previewAvailable = true,
-  onClick
+  onClick,
+  mood
 }: SongCardProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const { playSong, currentSongId } = usePlayerContext();
   const isPlaying = currentSongId === id;
   
-  const handleClick = () => {
+  const handleClick =  async () => {
     if (onClick) {
       onClick();
     } else {
