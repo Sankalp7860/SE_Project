@@ -11,6 +11,7 @@ interface SongCardProps {
   artist: string;
   thumbnailUrl: string;
   previewAvailable?: boolean;
+  mood: string;
 }
 
 const SongCard = ({ 
@@ -18,15 +19,57 @@ const SongCard = ({
   title, 
   artist, 
   thumbnailUrl, 
-  previewAvailable = true 
+  previewAvailable = true ,
+  mood
 }: SongCardProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const { playSong, currentSongId } = usePlayerContext();
   const isPlaying = currentSongId === id;
   
-  const handlePlayClick = (e: React.MouseEvent) => {
+  const handlePlayClick =  async (e: React.MouseEvent) => {
     e.stopPropagation();
     playSong(id, title, artist, thumbnailUrl);
+
+    const mood1 = mood;
+
+    // History details to save
+    const historyData = {
+        artist: artist,             // Song artist
+        date: new Date().toISOString().split('T')[0], // Current date in YYYY-MM-DD format
+        time: new Date().toLocaleTimeString(),       // Current time in HH:MM:SS AM/PM formattime:,
+        songTitle: title,
+        mood: mood                     // Mood from props
+    };
+
+    // Get JWT token from localStorage
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        console.error('No token found');
+        return;
+    }
+
+    try {
+        const response = await fetch('http://localhost:5050/api/history', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`  // Send token for authentication
+            },
+            body: JSON.stringify(historyData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Failed to add history:', errorData.message);
+            return;
+        }
+
+        const result = await response.json();
+        console.log('History added successfully:', result);
+    } catch (error) {
+        console.error('Error adding history:', error);
+    }
   };
   
   const handleLikeClick = (e: React.MouseEvent) => {

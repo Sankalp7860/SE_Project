@@ -219,6 +219,7 @@ const Explore = () => {
                 title={song.title}
                 artist={song.artist}
                 thumbnailUrl={song.thumbnailUrl}
+                mood = {selectedMood}
               />
             ))}
           </div>
