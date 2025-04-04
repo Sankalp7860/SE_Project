@@ -4,11 +4,12 @@ import { useAuth } from '@/context/AuthContext';
 import { usePlayerContext } from '@/context/PlayerContext';
 import Logo from '@/components/Logo';
 import { toast } from 'sonner';
-import { LogOut, Send, Users, Music, ArrowLeft, Lock } from 'lucide-react';
+import { LogOut, Send, Users, Music, ArrowLeft, Lock, Copy, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import io from 'socket.io-client';
 import SongCard from '@/components/SongCard';
 import { searchSongs, Song } from '@/utils/youtubeApi';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Define types
 interface Message {
@@ -45,6 +46,7 @@ interface RoomData {
   }>;
 }
 
+// Inside the Room component
 const Room = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const { user, logout } = useAuth();
@@ -59,7 +61,7 @@ const Room = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  
+  const [copied, setCopied] = useState(false);
   const socketRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -74,7 +76,6 @@ const Room = () => {
     }
 
     try {
-      // Fix: Change the endpoint from code/${roomId} to just ${roomId}
       const response = await fetch(`http://localhost:5050/api/rooms/${roomId}`, {
         method: 'GET',
         headers: {
@@ -144,7 +145,7 @@ const Room = () => {
       toast.error('No token found. Please log in again.');
       return;
     }
-
+    
     try {
       const response = await fetch(`http://localhost:5050/api/messages/${roomId}`, {
         method: 'POST',
@@ -154,23 +155,45 @@ const Room = () => {
         },
         body: JSON.stringify({ text: messageText })
       });
-
+      
       if (!response.ok) {
         throw new Error('Failed to send message');
       }
-
+      
       const newMessage = await response.json();
       
-      // Emit the message to socket
-      socketRef.current.emit('send_message', {
-        roomId,
-        message: newMessage
-      });
+      // Fix: Make sure the room property is correctly set for socket.io
+      newMessage.room = roomId;
       
+      // Emit the message to other users in the room
+      if (socketRef.current && socketRef.current.connected) {
+        console.log('Emitting message:', newMessage);
+        socketRef.current.emit('send_message', newMessage);
+      } else {
+        console.error('Socket not connected, cannot emit message');
+      }
+      
+      // Add the message to our local state immediately
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      
+      // Clear the input
       setMessageText('');
+      
+      // Scroll to bottom
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
+    }
+  };
+  // Add this function to handle copying the room code
+const copyRoomCode = () => {
+    if (room?.code) {
+      navigator.clipboard.writeText(room.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -301,44 +324,62 @@ const Room = () => {
   useEffect(() => {
     if (!user || !roomId) return;
     
-    // Fix: Add transport option to socket connection to avoid polling issues
+    // Fix: Use the correct socket.io connection with proper options
     socketRef.current = io('http://localhost:5050', {
       transports: ['websocket'],
       withCredentials: true
     });
     
-    // Join room
-    socketRef.current.emit('join_room', roomId);
-    
-    // Listen for new messages
-    socketRef.current.on('receive_message', (data) => {
-      setMessages((prevMessages) => [...prevMessages, data.message]);
+    socketRef.current.on('connect', () => {
+      console.log('Socket connected with ID:', socketRef.current.id);
+      socketRef.current.emit('join_room', roomId);
     });
     
-    // Listen for song updates (only for non-owners)
-    if (!isOwner) {
-      socketRef.current.on('song_updated', (data) => {
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+    
+    // Add this event listener for receiving messages
+    socketRef.current.on('receive_message', (newMessage) => {
+      console.log('Received new message:', newMessage);
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      
+      // Scroll to bottom when new message arrives
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+    
+    socketRef.current.on('song_updated', (data) => {
+      console.log('Song updated:', data);
+      if (!isOwner && data.song) {
         playSong(
           data.song.id,
-          data.song.title,
-          data.song.artist,
-          data.song.thumbnailUrl
+          data.song.title || '',
+          data.song.artist || '',
+          data.song.thumbnailUrl || ''
         );
-      });
-    }
+      }
+    });
     
-    // Fetch room data and messages
+    // Load initial data
     fetchRoomData();
     fetchMessages();
     
-    // Cleanup on unmount
+    // Set external control for the player
+    setExternalControl(!isOwner);
+    
     return () => {
       if (socketRef.current) {
+        console.log('Disconnecting socket...');
         socketRef.current.emit('leave_room', roomId);
         socketRef.current.disconnect();
       }
+      
+      // Reset external control
+      setExternalControl(false);
     };
-  }, [roomId, user]);
+  }, [roomId, user, isOwner, playSong]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -435,15 +476,32 @@ const Room = () => {
                   <Users size={14} className="mr-1" />
                   <span>{room.participants.length}/{room.maxUsers}</span>
                 </div>
+                <span>•</span>
+                <div 
+                  className="flex items-center space-x-1 cursor-pointer hover:text-foreground transition-colors"
+                  onClick={copyRoomCode}
+                  title="Click to copy room code"
+                >
+                  <span>Room Code: {room.code}</span>
+                  {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                </div>
               </div>
             </div>
           </div>
           
+          {/* Fix: Remove duplicate import and state declarations */}
           <div className="flex items-center space-x-2">
             {room.isPrivate && (
-              <div className="flex items-center space-x-1 text-sm bg-secondary/50 px-2 py-1 rounded-md">
+              <div className="flex items-center space-x-1 text-sm bg-secondary/50 px-3 py-1.5 rounded-full">
                 <Lock size={14} />
                 <span>Code: {room.code}</span>
+                <button
+                  onClick={copyRoomCode}
+                  className="ml-1 p-1 rounded-full hover:bg-white/10 transition-colors"
+                  title="Copy room code"
+                >
+                  {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                </button>
               </div>
             )}
             <button
@@ -464,26 +522,28 @@ const Room = () => {
             <h2 className="text-lg font-medium">Chat</h2>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length > 0 ? (
-              messages.map((message) => (
-                <div key={message._id} className="flex flex-col">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="font-medium">{message.user.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-4">
+              {messages.length > 0 ? (
+                messages.map((message) => (
+                  <div key={message._id} className="flex flex-col">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="font-medium">{message.user.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="text-sm bg-secondary/30 p-2 rounded-md">{message.text}</p>
                   </div>
-                  <p className="text-sm bg-secondary/30 p-2 rounded-md">{message.text}</p>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
           
           <div className="p-4 border-t border-white/10">
             <form 
