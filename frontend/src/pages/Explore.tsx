@@ -15,7 +15,7 @@ const Explore = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { playSong } = usePlayerContext();
+  const { playSong,stopPlayback,setIsPlaying} = usePlayerContext();
   
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -80,6 +80,7 @@ const Explore = () => {
   };
   
   const handleLogout = () => {
+    setIsPlaying(false);
     logout();
     navigate('/login');
   };
