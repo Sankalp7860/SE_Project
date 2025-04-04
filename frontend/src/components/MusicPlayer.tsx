@@ -5,9 +5,11 @@ import { usePlayerContext } from '@/context/PlayerContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer';
 import { formatTime } from '@/utils/formatTime';
+import {useAuth} from "../context/AuthContext"
 
 const MusicPlayer = () => {
   const [volumeVisible, setVolumeVisible] = useState(false);
+  const {user} = useAuth();
   
   const { 
     currentSongId, 
@@ -65,7 +67,7 @@ const MusicPlayer = () => {
   };
 
   if (!currentSongId) return null;
-
+  if (user?.email == null) return null;
   return (
     <AnimatePresence>
       <motion.div 
