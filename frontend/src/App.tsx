@@ -17,6 +17,8 @@ import Dashboard from "./pages/Dashboard";
 import Explore from "./pages/Explore";
 import History from "./pages/History";
 import NotFound from "./pages/NotFound";
+import SocialRooms from "./pages/SocialRooms";
+import Room from "./pages/Room";
 
 // Components
 import MusicPlayer from "./components/MusicPlayer";
@@ -54,39 +56,47 @@ const App = () => (
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<SignUp />} />
+                <Route path="/explore" element={<Explore />} />
                 
+                {/* Add new routes for social rooms */}
                 <Route 
-                  path="/dashboard" 
+                  path="/social-rooms" 
+                  element={
+                    <RequireAuth>
+                      <SocialRooms />
+                    </RequireAuth>
+                  } 
+                />
+                <Route 
+                  path="/room/:roomId" 
+                  element={
+                    <RequireAuth>
+                      <Room />
+                    </RequireAuth>
+                  } 
+                />
+                
+                <Route
+                  path="/dashboard"
                   element={
                     <RequireAuth>
                       <Dashboard />
                     </RequireAuth>
-                  } 
+                  }
                 />
-                
-                <Route 
-                  path="/explore" 
-                  element={
-                    <RequireAuth>
-                      <Explore />
-                    </RequireAuth>
-                  } 
-                />
-                
-                <Route 
-                  path="/history" 
+                <Route
+                  path="/history"
                   element={
                     <RequireAuth>
                       <History />
                     </RequireAuth>
-                  } 
+                  }
                 />
-                
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AnimatePresence>
-            <MusicPlayer />
           </BrowserRouter>
+          <MusicPlayer />
         </TooltipProvider>
       </PlayerProvider>
     </AuthProvider>
