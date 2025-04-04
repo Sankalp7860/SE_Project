@@ -45,6 +45,7 @@ interface RoomData {
   }>;
 }
 
+// Inside the Room component
 const Room = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const { user, logout } = useAuth();
@@ -74,7 +75,6 @@ const Room = () => {
     }
 
     try {
-      // Fix: Change the endpoint from code/${roomId} to just ${roomId}
       const response = await fetch(`http://localhost:5050/api/rooms/${roomId}`, {
         method: 'GET',
         headers: {
@@ -144,7 +144,7 @@ const Room = () => {
       toast.error('No token found. Please log in again.');
       return;
     }
-
+    
     try {
       const response = await fetch(`http://localhost:5050/api/messages/${roomId}`, {
         method: 'POST',
@@ -154,20 +154,34 @@ const Room = () => {
         },
         body: JSON.stringify({ text: messageText })
       });
-
+      
       if (!response.ok) {
         throw new Error('Failed to send message');
       }
-
+      
       const newMessage = await response.json();
       
-      // Emit the message to socket
-      socketRef.current.emit('send_message', {
-        roomId,
-        message: newMessage
-      });
+      // Fix: Make sure the room property is correctly set for socket.io
+      newMessage.room = roomId;
       
+      // Emit the message to other users in the room
+      if (socketRef.current && socketRef.current.connected) {
+        console.log('Emitting message:', newMessage);
+        socketRef.current.emit('send_message', newMessage);
+      } else {
+        console.error('Socket not connected, cannot emit message');
+      }
+      
+      // Add the message to our local state immediately
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      
+      // Clear the input
       setMessageText('');
+      
+      // Scroll to bottom
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
@@ -301,44 +315,62 @@ const Room = () => {
   useEffect(() => {
     if (!user || !roomId) return;
     
-    // Fix: Add transport option to socket connection to avoid polling issues
+    // Fix: Use the correct socket.io connection with proper options
     socketRef.current = io('http://localhost:5050', {
       transports: ['websocket'],
       withCredentials: true
     });
     
-    // Join room
-    socketRef.current.emit('join_room', roomId);
-    
-    // Listen for new messages
-    socketRef.current.on('receive_message', (data) => {
-      setMessages((prevMessages) => [...prevMessages, data.message]);
+    socketRef.current.on('connect', () => {
+      console.log('Socket connected with ID:', socketRef.current.id);
+      socketRef.current.emit('join_room', roomId);
     });
     
-    // Listen for song updates (only for non-owners)
-    if (!isOwner) {
-      socketRef.current.on('song_updated', (data) => {
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+    
+    // Add this event listener for receiving messages
+    socketRef.current.on('receive_message', (newMessage) => {
+      console.log('Received new message:', newMessage);
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      
+      // Scroll to bottom when new message arrives
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+    
+    socketRef.current.on('song_updated', (data) => {
+      console.log('Song updated:', data);
+      if (!isOwner && data.song) {
         playSong(
           data.song.id,
-          data.song.title,
-          data.song.artist,
-          data.song.thumbnailUrl
+          data.song.title || '',
+          data.song.artist || '',
+          data.song.thumbnailUrl || ''
         );
-      });
-    }
+      }
+    });
     
-    // Fetch room data and messages
+    // Load initial data
     fetchRoomData();
     fetchMessages();
     
-    // Cleanup on unmount
+    // Set external control for the player
+    setExternalControl(!isOwner);
+    
     return () => {
       if (socketRef.current) {
+        console.log('Disconnecting socket...');
         socketRef.current.emit('leave_room', roomId);
         socketRef.current.disconnect();
       }
+      
+      // Reset external control
+      setExternalControl(false);
     };
-  }, [roomId, user]);
+  }, [roomId, user, isOwner, playSong]);
 
   // Scroll to bottom when messages change
   useEffect(() => {

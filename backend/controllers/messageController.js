@@ -31,23 +31,22 @@ const createMessage = async (req, res) => {
     const userId = req.user.id;
     
     // Check if room exists
-    const room = await Room.findById(roomId);
-    if (!room) {
+    const roomExists = await Room.findById(roomId);
+    if (!roomExists) {
       return res.status(404).json({ message: 'Room not found' });
     }
     
-    // Check if user is in the room
-    if (!room.participants.includes(userId)) {
-      return res.status(403).json({ message: 'You must be in the room to send messages' });
-    }
-    
+    // Create message
     const newMessage = await Message.create({
-      room: roomId,
+      text,
       user: userId,
-      text
+      room: roomId
     });
     
-    const populatedMessage = await Message.findById(newMessage._id).populate('user', 'name');
+    // Populate user details
+    const populatedMessage = await Message.findById(newMessage._id)
+      .populate('user', 'name')
+      .populate('room');
     
     res.status(201).json(populatedMessage);
   } catch (error) {
