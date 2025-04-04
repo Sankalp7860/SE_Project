@@ -123,6 +123,12 @@ const Dashboard = () => {
               >
                 History
               </Link>
+              <Link 
+                to="/social-rooms" 
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Social Rooms
+              </Link>
             </nav>
           </div>
           
