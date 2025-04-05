@@ -18,9 +18,9 @@ const MusicPlayer = () => {
     currentSongThumbnail,
     isPlaying,
     setIsPlaying,
-    stopPlayback,
     playNext,
-    playPrevious
+    playPrevious,
+    stopPlayback
   } = usePlayerContext();
 
   const {
@@ -35,6 +35,14 @@ const MusicPlayer = () => {
     videoId: currentSongId,
     isPlaying,
   });
+
+
+  const handlestop = () => {
+    console.log("Stopping playback")
+    setIsPlaying(false);
+    stopPlayback();
+  };
+  
 
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying);
@@ -57,6 +65,8 @@ const MusicPlayer = () => {
     
     seekTo(newTime);
   };
+
+  
 
   const handleVolumeClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -150,7 +160,7 @@ const MusicPlayer = () => {
                 style={{ width: `${volume}%` }}
               />
             </div>
-            <button onClick={stopPlayback} className="text-muted-foreground hover:text-white ml-2">
+            <button onClick={handlestop} className="text-muted-foreground hover:text-white ml-2">
               <X size={20} />
             </button>
           </div>

@@ -120,18 +120,26 @@ export const useYouTubePlayer = ({ videoId, isPlaying }: UseYouTubePlayerProps):
 
   // Load video when videoId changes
   useEffect(() => {
-    if (!isReady || !playerRef.current || !videoId) return;
+    if (!isReady || !playerRef.current) return;
     
-    console.log('Loading video:', videoId);
-    playerRef.current.loadVideoById(videoId);
-    
-    // Get video duration after a short delay to ensure it's available
-    setTimeout(() => {
-      if (playerRef.current) {
-        const newDuration = playerRef.current.getDuration();
-        setDuration(newDuration > 0 ? newDuration : 0);
-      }
-    }, 1000);
+    if (videoId) {
+      console.log('Loading video:', videoId);
+      playerRef.current.loadVideoById(videoId);
+      
+      // Get video duration after a short delay to ensure it's available
+      setTimeout(() => {
+        if (playerRef.current) {
+          const newDuration = playerRef.current.getDuration();
+          setDuration(newDuration > 0 ? newDuration : 0);
+        }
+      }, 1000);
+    } else {
+      // Stop the player when videoId becomes null (player is closed)
+      console.log('Stopping YouTube player');
+      playerRef.current.stopVideo();
+      setCurrentTime(0);
+      setDuration(0);
+    }
     
   }, [videoId, isReady]);
 

@@ -131,6 +131,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const stopPlayback = () => {
+    console.log("Stopping playback")
     setIsPlaying(false);
     setCurrentSongId(null);
     setCurrentSongTitle('');
