@@ -11,9 +11,16 @@ const app = express();
 app.use(express.json());
 connectDB();
 
+// Socket.io and HTTP server imports
+const http = require('http');
+const { Server } = require('socket.io');
+const roomRoutes = require('./routes/roomRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+
+// Apply CORS middleware - single configuration
 app.use(cors({
-    origin: 'http://localhost:8080', // Ensure this matches your frontend
-    credentials: true, // Allow credentials (cookies, authentication headers)
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:8080'],
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -21,22 +28,8 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/history', historyRoutes);
-
-// Add these imports at the top of your server.js file
-const http = require('http');
-const { Server } = require('socket.io');
-const roomRoutes = require('./routes/roomRoutes');
-const messageRoutes = require('./routes/messageRoutes');
-
-// Add these routes to your existing routes
 app.use('/api/rooms', roomRoutes);
 app.use('/api/messages', messageRoutes);
-
-// Apply CORS middleware
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'], // Add your frontend URLs
-  credentials: true
-}));
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -74,6 +67,21 @@ io.on('connection', (socket) => {
   // Update song
   socket.on('update_song', (data) => {
     socket.to(data.roomId).emit('song_updated', data);
+  });
+
+  // Update playback state (play/pause)
+  socket.on('update_playback_state', (data) => {
+    socket.to(data.roomId).emit('playback_state_updated', {
+      isPlaying: data.isPlaying,
+      currentTime: data.currentTime
+    });
+  });
+
+  // Update playback time (for seeking)
+  socket.on('update_playback_time', (data) => {
+    socket.to(data.roomId).emit('playback_time_updated', {
+      currentTime: data.currentTime
+    });
   });
 
   // Disconnect

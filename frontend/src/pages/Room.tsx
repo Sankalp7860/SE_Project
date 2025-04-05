@@ -8,6 +8,7 @@ import { LogOut, Send, Users, Music, ArrowLeft, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import io from 'socket.io-client';
 import SongCard from '@/components/SongCard';
+import SocialRoomMusicPlayer from '@/components/SocialRoomMusicPlayer';
 import { searchSongs, Song } from '@/utils/youtubeApi';
 
 // Define types
@@ -48,7 +49,7 @@ interface RoomData {
 const Room = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const { user, logout } = useAuth();
-  const { playSong, currentSongId, setExternalControl } = usePlayerContext();
+  const { playSong, currentSongId, setExternalControl, setIsPlaying } = usePlayerContext();
   const navigate = useNavigate();
   
   const [room, setRoom] = useState<RoomData | null>(null);
@@ -327,6 +328,20 @@ const Room = () => {
       });
     }
     
+    // Set external control for the player
+    setExternalControl(true);
+    
+    // Add socket events for playback synchronization
+    socketRef.current.on('playback_state_updated', (data) => {
+      if (!isOwner) {
+        setIsPlaying(data.isPlaying);
+      }
+    });
+    
+    socketRef.current.on('playback_time_updated', (data) => {
+      // This will be handled by the SocialRoomMusicPlayer component
+    });
+    
     // Fetch room data and messages
     fetchRoomData();
     fetchMessages();
@@ -337,6 +352,8 @@ const Room = () => {
         socketRef.current.emit('leave_room', roomId);
         socketRef.current.disconnect();
       }
+      // Reset external control
+      setExternalControl(false);
     };
   }, [roomId, user]);
 
@@ -513,23 +530,39 @@ const Room = () => {
         
         {/* Right side - Music */}
         <div className="w-full md:w-2/3 flex flex-col h-[calc(100vh-8rem)]">
-          {/* Current song */}
+          {/* Current song and player */}
           <div className="p-4 border-b border-white/10">
             <h2 className="text-lg font-medium mb-4">
               {isOwner ? 'Now Playing' : 'Listening to'}
             </h2>
             
             {room.currentSong?.id ? (
-              <div className="flex items-center space-x-4">
-                <img 
-                  src={room.currentSong.thumbnailUrl || ''} 
-                  alt={room.currentSong.title || 'Current song'} 
-                  className="w-16 h-16 object-cover rounded-md"
-                />
-                <div>
-                  <h3 className="font-medium">{room.currentSong.title}</h3>
-                  <p className="text-sm text-muted-foreground">{room.currentSong.artist}</p>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-4">
+                  <img 
+                    src={room.currentSong.thumbnailUrl || ''} 
+                    alt={room.currentSong.title || 'Current song'} 
+                    className="w-16 h-16 object-cover rounded-md"
+                  />
+                  <div>
+                    <h3 className="font-medium">{room.currentSong.title}</h3>
+                    <p className="text-sm text-muted-foreground">{room.currentSong.artist}</p>
+                  </div>
                 </div>
+                
+                {/* Social Room Music Player */}
+                {socketRef.current && (
+                  <SocialRoomMusicPlayer 
+                    isHost={isOwner}
+                    roomId={roomId || ''}
+                    socket={socketRef.current}
+                    onSongChange={(song) => {
+                      if (isOwner) {
+                        handlePlaySong(song);
+                      }
+                    }}
+                  />
+                )}
               </div>
             ) : (
               <div className="text-center py-4 bg-secondary/20 rounded-md">
