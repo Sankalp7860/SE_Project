@@ -51,7 +51,7 @@ const Room = () => {
   const { user, logout } = useAuth();
   const { playSong, currentSongId, setExternalControl, setIsPlaying } = usePlayerContext();
   const navigate = useNavigate();
-  
+
   const [room, setRoom] = useState<RoomData | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState('');
@@ -60,14 +60,14 @@ const Room = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  
+
   const socketRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Fetch room data
   const fetchRoomData = async () => {
     const token = localStorage.getItem('token');
-    
+
     if (!token) {
       toast.error('No token found. Please log in again.');
       navigate('/login');
@@ -90,7 +90,7 @@ const Room = () => {
       const data = await response.json();
       setRoom(data);
       setIsOwner(data.owner._id === user?.id);
-      
+
       // If there's a current song and we're not the owner, play it
       if (data.currentSong?.id && !isOwner) {
         playSong(
@@ -100,7 +100,7 @@ const Room = () => {
           data.currentSong.thumbnailUrl || ''
         );
       }
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error fetching room data:', error);
@@ -112,7 +112,7 @@ const Room = () => {
   // Fetch messages
   const fetchMessages = async () => {
     const token = localStorage.getItem('token');
-    
+
     if (!token || !roomId) return;
 
     try {
@@ -138,9 +138,9 @@ const Room = () => {
   // Send a message
   const sendMessage = async () => {
     if (!messageText.trim() || !roomId) return;
-    
+
     const token = localStorage.getItem('token');
-    
+
     if (!token) {
       toast.error('No token found. Please log in again.');
       return;
@@ -161,13 +161,13 @@ const Room = () => {
       }
 
       const newMessage = await response.json();
-      
+
       // Emit the message to socket
       socketRef.current.emit('send_message', {
         roomId,
         message: newMessage
       });
-      
+
       setMessageText('');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -178,9 +178,9 @@ const Room = () => {
   // Handle song search
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-    
+
     setIsSearching(true);
-    
+
     try {
       const results = await searchSongs(searchQuery);
       setSearchResults(results);
@@ -195,18 +195,20 @@ const Room = () => {
   // Play a song (for room owner)
   const handlePlaySong = async (song: Song) => {
     if (!isOwner || !roomId) return;
-    
+
     const token = localStorage.getItem('token');
-    
+
     if (!token) {
       toast.error('No token found. Please log in again.');
       return;
     }
 
     try {
+      console.log('Playing song:', song);
+      
       // Play the song locally
       playSong(song.id, song.title, song.artist, song.thumbnailUrl);
-      
+
       // Update the current song in the room
       const response = await fetch(`http://localhost:5050/api/rooms/${roomId}/song`, {
         method: 'PUT',
@@ -226,7 +228,22 @@ const Room = () => {
       if (!response.ok) {
         throw new Error('Failed to update current song');
       }
-      
+
+      // Update local room state
+      setRoom(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          currentSong: {
+            id: song.id,
+            title: song.title,
+            artist: song.artist,
+            thumbnailUrl: song.thumbnailUrl,
+            timestamp: Date.now()
+          }
+        };
+      });
+
       // Emit song update to socket
       socketRef.current.emit('update_song', {
         roomId,
@@ -237,7 +254,7 @@ const Room = () => {
           thumbnailUrl: song.thumbnailUrl
         }
       });
-      
+
       // Clear search results
       setSearchQuery('');
       setSearchResults([]);
@@ -250,9 +267,9 @@ const Room = () => {
   // Leave room
   const handleLeaveRoom = async () => {
     if (!roomId) return;
-    
+
     const token = localStorage.getItem('token');
-    
+
     if (!token) {
       toast.error('No token found. Please log in again.');
       navigate('/social-rooms');
@@ -266,13 +283,13 @@ const Room = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       // Disconnect from socket
       if (socketRef.current) {
         socketRef.current.emit('leave_room', roomId);
         socketRef.current.disconnect();
       }
-      
+
       toast.success(isOwner ? 'Room deleted successfully' : 'Left room successfully');
       navigate('/social-rooms');
     } catch (error) {
@@ -287,7 +304,7 @@ const Room = () => {
     if (socketRef.current) {
       socketRef.current.disconnect();
     }
-    
+
     logout();
     navigate('/login');
     toast.success('Logged out successfully');
@@ -301,61 +318,80 @@ const Room = () => {
   // Initialize socket connection
   useEffect(() => {
     if (!user || !roomId) return;
-    
+
     // Fix: Add transport option to socket connection to avoid polling issues
     socketRef.current = io('http://localhost:5050', {
       transports: ['websocket'],
       withCredentials: true
     });
+
+    console.log('Socket connecting to room:', roomId);
     
     // Join room
     socketRef.current.emit('join_room', roomId);
-    
+
     // Listen for new messages
     socketRef.current.on('receive_message', (data) => {
       setMessages((prevMessages) => [...prevMessages, data.message]);
     });
-    
-    // Listen for song updates (only for non-owners)
-    if (!isOwner) {
-      socketRef.current.on('song_updated', (data) => {
+
+    // Listen for song updates (for all users)
+    socketRef.current.on('song_updated', (data: { song: Song }) => {
+      console.log('Received song update:', data);
+      if (data.song && !isOwner) {
         playSong(
           data.song.id,
-          data.song.title,
-          data.song.artist,
-          data.song.thumbnailUrl
+          data.song.title || '',
+          data.song.artist || '',
+          data.song.thumbnailUrl || ''
         );
-      });
-    }
-    
-    // Set external control for the player
-    setExternalControl(true);
-    
-    // Add socket events for playback synchronization
-    socketRef.current.on('playback_state_updated', (data) => {
+        
+        // Update room data to reflect the new song
+        setRoom(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            currentSong: {
+              id: data.song.id,
+              title: data.song.title,
+              artist: data.song.artist,
+              thumbnailUrl: data.song.thumbnailUrl,
+              timestamp: Date.now()
+            }
+          };
+        });
+      }
+    });
+
+    // Listen for playback state updates (for all users)
+    socketRef.current.on('playback_state_updated', (data: { isPlaying: boolean, currentTime: number }) => {
+      console.log('Received playback state update:', data);
       if (!isOwner) {
         setIsPlaying(data.isPlaying);
       }
     });
-    
-    socketRef.current.on('playback_time_updated', (data) => {
-      // This will be handled by the SocialRoomMusicPlayer component
-    });
-    
+
+    // Set external control for the player
+    setExternalControl(true);
+
     // Fetch room data and messages
     fetchRoomData();
     fetchMessages();
-    
+
     // Cleanup on unmount
     return () => {
       if (socketRef.current) {
+        console.log('Disconnecting socket');
         socketRef.current.emit('leave_room', roomId);
+        socketRef.current.off('receive_message');
+        socketRef.current.off('song_updated');
+        socketRef.current.off('playback_state_updated');
         socketRef.current.disconnect();
       }
       // Reset external control
       setExternalControl(false);
     };
-  }, [roomId, user]);
+  }, [roomId, user, navigate, playSong, setIsPlaying, isOwner]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -394,33 +430,33 @@ const Room = () => {
           <div className="flex items-center space-x-8">
             <Logo />
             <nav className="hidden md:flex items-center space-x-6">
-              <Link 
-                to="/" 
+              <Link
+                to="/"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Home
               </Link>
-              <Link 
-                to="/explore" 
+              <Link
+                to="/explore"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Explore
               </Link>
-              <Link 
-                to="/dashboard" 
+              <Link
+                to="/dashboard"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 History
               </Link>
-              <Link 
-                to="/social-rooms" 
+              <Link
+                to="/social-rooms"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 Social Rooms
               </Link>
             </nav>
           </div>
-          
+
           <button
             onClick={handleLogout}
             className="flex items-center space-x-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -430,7 +466,7 @@ const Room = () => {
           </button>
         </div>
       </header>
-      
+
       {/* Room header */}
       <div className="sticky top-16 z-10 bg-background/80 backdrop-blur-md border-b border-white/10 p-4">
         <div className="max-w-screen-xl mx-auto flex items-center justify-between">
@@ -455,7 +491,7 @@ const Room = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             {room.isPrivate && (
               <div className="flex items-center space-x-1 text-sm bg-secondary/50 px-2 py-1 rounded-md">
@@ -472,7 +508,7 @@ const Room = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Main content */}
       <div className="flex-1 flex flex-col md:flex-row max-w-screen-xl mx-auto w-full">
         {/* Left side - Chat */}
@@ -480,7 +516,7 @@ const Room = () => {
           <div className="p-4 border-b border-white/10">
             <h2 className="text-lg font-medium">Chat</h2>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length > 0 ? (
               messages.map((message) => (
@@ -501,9 +537,9 @@ const Room = () => {
             )}
             <div ref={messagesEndRef} />
           </div>
-          
+
           <div className="p-4 border-t border-white/10">
-            <form 
+            <form
               onSubmit={(e) => {
                 e.preventDefault();
                 sendMessage();
@@ -527,7 +563,7 @@ const Room = () => {
             </form>
           </div>
         </div>
-        
+
         {/* Right side - Music */}
         <div className="w-full md:w-2/3 flex flex-col h-[calc(100vh-8rem)]">
           {/* Current song and player */}
@@ -535,51 +571,52 @@ const Room = () => {
             <h2 className="text-lg font-medium mb-4">
               {isOwner ? 'Now Playing' : 'Listening to'}
             </h2>
-            
-            {room.currentSong?.id ? (
+
+            {socketRef.current && (
               <div className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <img 
-                    src={room.currentSong.thumbnailUrl || ''} 
-                    alt={room.currentSong.title || 'Current song'} 
-                    className="w-16 h-16 object-cover rounded-md"
-                  />
-                  <div>
-                    <h3 className="font-medium">{room.currentSong.title}</h3>
-                    <p className="text-sm text-muted-foreground">{room.currentSong.artist}</p>
+                {room.currentSong?.id ? (
+                  <div className="flex items-center space-x-4">
+                    <img
+                      src={room.currentSong.thumbnailUrl || ''}
+                      alt={room.currentSong.title || 'Current song'}
+                      className="w-16 h-16 object-cover rounded-md"
+                    />
+                    <div>
+                      <h3 className="font-medium">{room.currentSong.title}</h3>
+                      <p className="text-sm text-muted-foreground">{room.currentSong.artist}</p>
+                    </div>
                   </div>
-                </div>
-                
-                {/* Social Room Music Player */}
-                {socketRef.current && (
-                  <SocialRoomMusicPlayer 
-                    isHost={isOwner}
-                    roomId={roomId || ''}
-                    socket={socketRef.current}
-                    onSongChange={(song) => {
-                      if (isOwner) {
-                        handlePlaySong(song);
-                      }
-                    }}
-                  />
+                ) : (
+                  <div className="text-center py-4 bg-secondary/20 rounded-md mb-4">
+                    <Music className="mx-auto mb-2 text-muted-foreground" size={24} />
+                    <p className="text-muted-foreground">
+                      {isOwner ? 'No song playing. Search for a song below.' : 'Host hasn\'t played any songs yet.'}
+                    </p>
+                  </div>
                 )}
-              </div>
-            ) : (
-              <div className="text-center py-4 bg-secondary/20 rounded-md">
-                <Music className="mx-auto mb-2 text-muted-foreground" size={24} />
-                <p className="text-muted-foreground">
-                  {isOwner ? 'No song playing. Search for a song below.' : 'Host hasn\'t played any songs yet.'}
-                </p>
+
+                {/* Always render the music player */}
+                <SocialRoomMusicPlayer
+                  isHost={isOwner}
+                  roomId={roomId || ''}
+                  socket={socketRef.current}
+                  roomMood={room.mood}
+                  onSongChange={(song) => {
+                    if (isOwner) {
+                      handlePlaySong(song);
+                    }
+                  }}
+                />
               </div>
             )}
           </div>
-          
+
           {/* Song search (only for owner) */}
           {isOwner && (
             <div className="p-4 border-b border-white/10">
               <h2 className="text-lg font-medium mb-4">Search Songs</h2>
-              
-              <form 
+
+              <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleSearch();
@@ -601,7 +638,7 @@ const Room = () => {
                   {isSearching ? 'Searching...' : 'Search'}
                 </button>
               </form>
-              
+
               {/* Search results */}
               <div className="overflow-y-auto max-h-[calc(100vh-24rem)]">
                 {isSearching ? (
@@ -631,18 +668,17 @@ const Room = () => {
               </div>
             </div>
           )}
-          
+
           {/* Participants */}
           <div className="p-4 flex-1">
             <h2 className="text-lg font-medium mb-4">Participants ({room.participants.length}/{room.maxUsers})</h2>
-            
+
             <div className="space-y-2">
               {room.participants.map((participant) => (
-                <div 
+                <div
                   key={participant._id}
-                  className={`flex items-center space-x-3 p-2 rounded-md ${
-                    participant._id === room.owner._id ? 'bg-blue-500/10' : 'bg-secondary/20'
-                  }`}
+                  className={`flex items-center space-x-3 p-2 rounded-md ${participant._id === room.owner._id ? 'bg-blue-500/10' : 'bg-secondary/20'
+                    }`}
                 >
                   <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
                     {participant.name.charAt(0).toUpperCase()}
