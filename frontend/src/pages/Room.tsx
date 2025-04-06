@@ -340,17 +340,29 @@ const copyRoomCode = () => {
       console.error('Socket connection error:', error);
     });
     
-    // Add this event listener for receiving messages
+    // Improved message handling
     socketRef.current.on('receive_message', (newMessage) => {
       console.log('Received new message:', newMessage);
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
       
-      // Scroll to bottom when new message arrives
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      // Ensure the message has all required properties before adding to state
+      if (newMessage && newMessage._id) {
+        setMessages((prevMessages) => {
+          // Check if message already exists to prevent duplicates
+          const messageExists = prevMessages.some(msg => msg._id === newMessage._id);
+          if (messageExists) {
+            return prevMessages;
+          }
+          return [...prevMessages, newMessage];
+        });
+        
+        // Scroll to bottom when new message arrives
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     });
     
+    // Improved song update handling
     socketRef.current.on('song_updated', (data) => {
       console.log('Song updated:', data);
       if (!isOwner && data.song) {
@@ -360,7 +372,27 @@ const copyRoomCode = () => {
           data.song.artist || '',
           data.song.thumbnailUrl || ''
         );
+        
+        // Update the room data with the new song information
+        if (room) {
+          setRoom({
+            ...room,
+            currentSong: {
+              id: data.song.id,
+              title: data.song.title || '',
+              artist: data.song.artist || '',
+              thumbnailUrl: data.song.thumbnailUrl || '',
+              timestamp: Date.now()
+            }
+          });
+        }
       }
+    });
+    
+    // Add this event listener for room updates
+    socketRef.current.on('room_updated', () => {
+      console.log('Room data updated, refreshing...');
+      fetchRoomData();
     });
     
     // Load initial data
