@@ -261,6 +261,20 @@ const copyRoomCode = () => {
         }
       });
       
+      // Update the local room state with the new song information
+      if (room) {
+        setRoom({
+          ...room,
+          currentSong: {
+            id: song.id,
+            title: song.title,
+            artist: song.artist,
+            thumbnailUrl: song.thumbnailUrl,
+            timestamp: Date.now()
+          }
+        });
+      }
+      
       // Clear search results
       setSearchQuery('');
       setSearchResults([]);
