@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { usePlayerContext } from "../context/PlayerContext"
 import Logo from '@/components/Logo';
 import SearchBar from '@/components/SearchBar';
 import HistoryItem from '@/components/HistoryItem';
@@ -9,6 +10,7 @@ import { LogOut, Trash } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Dashboard = () => {
+  const {stopPlayback} = usePlayerContext();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
@@ -81,6 +83,7 @@ const Dashboard = () => {
   // ✅ Logout handler
   const handleLogout = () => {
     logout();
+    stopPlayback();
     navigate('/login');
     toast.success('Logged out successfully');
   };
@@ -122,6 +125,12 @@ const Dashboard = () => {
                 className="text-sm font-medium text-foreground transition-colors"
               >
                 History
+              </Link>
+              <Link 
+                to="/social-rooms" 
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Social Rooms
               </Link>
             </nav>
           </div>

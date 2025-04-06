@@ -5,9 +5,11 @@ import { usePlayerContext } from '@/context/PlayerContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer';
 import { formatTime } from '@/utils/formatTime';
+import {useAuth} from "../context/AuthContext"
 
 const MusicPlayer = () => {
   const [volumeVisible, setVolumeVisible] = useState(false);
+  const {user} = useAuth();
   
   const { 
     currentSongId, 
@@ -16,9 +18,9 @@ const MusicPlayer = () => {
     currentSongThumbnail,
     isPlaying,
     setIsPlaying,
-    stopPlayback,
     playNext,
-    playPrevious
+    playPrevious,
+    stopPlayback
   } = usePlayerContext();
 
   const {
@@ -33,6 +35,14 @@ const MusicPlayer = () => {
     videoId: currentSongId,
     isPlaying,
   });
+
+
+  const handlestop = () => {
+    console.log("Stopping playback")
+    setIsPlaying(false);
+    stopPlayback();
+  };
+  
 
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying);
@@ -56,6 +66,8 @@ const MusicPlayer = () => {
     seekTo(newTime);
   };
 
+  
+
   const handleVolumeClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
@@ -65,7 +77,7 @@ const MusicPlayer = () => {
   };
 
   if (!currentSongId) return null;
-
+  if (user?.email == null) return null;
   return (
     <AnimatePresence>
       <motion.div 
@@ -148,7 +160,7 @@ const MusicPlayer = () => {
                 style={{ width: `${volume}%` }}
               />
             </div>
-            <button onClick={stopPlayback} className="text-muted-foreground hover:text-white ml-2">
+            <button onClick={handlestop} className="text-muted-foreground hover:text-white ml-2">
               <X size={20} />
             </button>
           </div>

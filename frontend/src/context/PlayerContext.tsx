@@ -1,6 +1,13 @@
 import { createContext, useContext, useState } from 'react';
 import { toast } from 'sonner';
 
+interface Song {
+  id: string;
+  title: string;
+  artist: string;
+  thumbnailUrl: string;
+}
+
 interface PlayerContextType {
   currentSongId: string | null;
   currentSongTitle: string;
@@ -10,17 +17,14 @@ interface PlayerContextType {
   playQueue: Song[];
   currentSongIndex: number;
   playSong: (id: string, title: string, artist: string, thumbnail: string, queue?: Song[]) => void;
+  pauseSong: () => void;
+  resumeSong: () => void;
+  stopSong: () => void;
   playNext: () => void;
   playPrevious: () => void;
   stopPlayback: () => void;
   setIsPlaying: (playing: boolean) => void;
-}
-
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  thumbnailUrl: string;
+  setExternalControl: (isControlled: boolean) => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -33,6 +37,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playQueue, setPlayQueue] = useState<Song[]>([]);
   const [currentSongIndex, setCurrentSongIndex] = useState(-1);
+  const [isExternallyControlled, setIsExternallyControlled] = useState(false);
 
   const playSong = (id: string, title: string, artist: string, thumbnail: string, queue?: Song[]) => {
     setCurrentSongId(id);
@@ -56,6 +61,33 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       description: artist,
       duration: 3000,
     });
+  };
+
+  // Add these functions to maintain compatibility with existing components
+  const pauseSong = () => {
+    if (!isExternallyControlled) {
+      setIsPlaying(false);
+    }
+  };
+
+  const resumeSong = () => {
+    if (!isExternallyControlled) {
+      setIsPlaying(true);
+    }
+  };
+
+  const stopSong = () => {
+    if (!isExternallyControlled) {
+      setIsPlaying(false);
+      setCurrentSongId(null);
+      setCurrentSongTitle('');
+      setCurrentSongArtist('');
+      setCurrentSongThumbnail('');
+    }
+  };
+
+  const setExternalControl = (isControlled: boolean) => {
+    setIsExternallyControlled(isControlled);
   };
 
   const playNext = () => {
@@ -99,6 +131,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const stopPlayback = () => {
+    console.log("Stopping playback")
     setIsPlaying(false);
     setCurrentSongId(null);
     setCurrentSongTitle('');
@@ -117,10 +150,14 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         playQueue,
         currentSongIndex,
         playSong,
+        pauseSong,
+        resumeSong,
+        stopSong,
         playNext,
         playPrevious,
         stopPlayback,
         setIsPlaying,
+        setExternalControl
       }}
     >
       {children}

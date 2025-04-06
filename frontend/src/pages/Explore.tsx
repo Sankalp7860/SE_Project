@@ -15,7 +15,7 @@ const Explore = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { playSong } = usePlayerContext();
+  const { playSong,stopPlayback,setIsPlaying} = usePlayerContext();
   
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -80,6 +80,7 @@ const Explore = () => {
   };
   
   const handleLogout = () => {
+    setIsPlaying(false);
     logout();
     navigate('/login');
   };
@@ -94,7 +95,7 @@ const Explore = () => {
         date: new Date().toISOString().split('T')[0], // Current date in YYYY-MM-DD format
         time: new Date().toLocaleTimeString(),       // Current time in HH:MM:SS AM/PM formattime:,
         songTitle: song.title,
-        mood: selectedMood                     // Mood from props
+        mood: selectedMood || 'discover'  // Use 'discover' as default mood if selectedMood is null
     };
 
     // Get JWT token from localStorage
@@ -118,14 +119,18 @@ const Explore = () => {
         if (!response.ok) {
             const errorData = await response.json();
             console.error('Failed to add history:', errorData.message);
-            return;
+            toast.error('Failed to save to history');
+            // Continue with playing the song even if history saving fails
+        } else {
+            const result = await response.json();
+            console.log('History added successfully:', result);
         }
-
-        const result = await response.json();
-        console.log('History added successfully:', result);
     } catch (error) {
         console.error('Error adding history:', error);
+        // Continue with playing the song even if history saving fails
     }
+    
+    // Play the song regardless of whether history was saved successfully
     playSong(song.id, song.title, song.artist, song.thumbnailUrl, songs);
   };
   
