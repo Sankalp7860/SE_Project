@@ -90,6 +90,7 @@ const Room = () => {
       const data = await response.json();
       setRoom(data);
       setIsOwner(data.owner._id === user?.id);
+      console.log("owner hai kya "+isOwner+" "+data.owner._id+" "+user?.id)
       
       // If there's a current song and we're not the owner, play it
       if (data.currentSong?.id && !isOwner) {
