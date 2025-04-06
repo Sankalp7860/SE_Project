@@ -11,7 +11,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading } = useAuth();
+  const { login, isLoading ,user} = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -30,7 +30,7 @@ const Login = () => {
         if (!response.ok) throw new Error(data.message);
 
         localStorage.setItem("token", data.token);
-        login(email,password);
+        login(email,password,data._id);
         toast.success('Welcome back!');
         navigate("/");
     } catch (error) {

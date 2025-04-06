@@ -10,7 +10,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string,id:string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string,id:string) => {
     // Simulate API call
     setIsLoading(true);
     
@@ -48,8 +48,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw new Error('Email and password are required');
     }
     
-    const mockUser = { id: '123', email };
+    console.log("login "+id)
+    const mockUser = { id, email };
     setUser(mockUser);
+    console.log(mockUser)
     localStorage.setItem('moodtunes_user', JSON.stringify(mockUser));
     setIsLoading(false);
   };
