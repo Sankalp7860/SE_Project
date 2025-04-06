@@ -88,19 +88,29 @@ const joinRoom = async (req, res) => {
     }
     
     // Check if user is already in the room
-    if (room.participants.includes(userId)) {
-      return res.json(room);
+    if (!room.participants.includes(userId)) {
+      // Add user to participants
+      room.participants.push(userId);
+      await room.save();
     }
     
-    // Add user to participants
-    room.participants.push(userId);
-    await room.save();
-    
-    const updatedRoom = await Room.findById(room._id)
+    const populatedRoom = await Room.findById(room._id)
       .populate('owner', 'name')
       .populate('participants', 'name');
     
-    res.json(updatedRoom);
+    // Emit participant update event via Socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.to(room._id.toString()).emit('participant_updated', {
+        roomId: room._id.toString(),
+        participants: populatedRoom.participants
+      });
+      
+      // Also emit room_updated event for general refresh
+      io.to(room._id.toString()).emit('room_updated');
+    }
+    
+    res.json(populatedRoom);
   } catch (error) {
     console.error('Error joining room:', error);
     res.status(500).json({ message: 'Failed to join room' });
@@ -128,10 +138,35 @@ const leaveRoom = async (req, res) => {
     if (room.owner.toString() === userId) {
       await Room.findByIdAndDelete(roomId);
       await Message.deleteMany({ room: roomId });
+      
+      // Notify all users in the room that it's been deleted
+      const io = req.app.get('io');
+      if (io) {
+        io.to(roomId).emit('room_deleted');
+      }
+      
       return res.json({ message: 'Room deleted successfully' });
     }
     
     await room.save();
+    
+    // Get updated room with populated participants
+    const populatedRoom = await Room.findById(roomId)
+      .populate('owner', 'name')
+      .populate('participants', 'name');
+      
+    // Emit participant update event via Socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.to(roomId).emit('participant_updated', {
+        roomId,
+        participants: populatedRoom.participants
+      });
+      
+      // Also emit room_updated event for general refresh
+      io.to(roomId).emit('room_updated');
+    }
+    
     res.json({ message: 'Left room successfully' });
   } catch (error) {
     console.error('Error leaving room:', error);

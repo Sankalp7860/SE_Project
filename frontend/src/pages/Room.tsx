@@ -270,6 +270,11 @@ const copyRoomCode = () => {
     }
   };
 
+  const handleBackToSocialRooms = () => {
+    // Call the leave room function before navigating
+    handleLeaveRoom();
+  };
+
   // Leave room
   const handleLeaveRoom = async () => {
     if (!roomId) return;
@@ -395,6 +400,34 @@ const copyRoomCode = () => {
       fetchRoomData();
     });
     
+    // Add this event listener for participant updates
+    // Update the participant_updated event handler in the useEffect hook
+    socketRef.current.on('participant_updated', (data) => {
+    console.log('Participant list updated:', data);
+    if (room && data.participants) {
+    setRoom(prevRoom => {
+    if (!prevRoom) return null;
+    return {
+    ...prevRoom,
+    participants: data.participants
+    };
+    });
+    }
+    });
+    
+    // Also update the room_updated event handler to ensure it properly refreshes the data
+    socketRef.current.on('room_updated', () => {
+    console.log('Room data updated, refreshing...');
+    fetchRoomData();
+    });
+    
+    // Add this event listener for room deletion
+    socketRef.current.on('room_deleted', () => {
+      console.log('Room has been deleted by the owner');
+      toast.info('This room has been deleted by the owner');
+      navigate('/social-rooms');
+    });
+    
     // Load initial data
     fetchRoomData();
     fetchMessages();
@@ -492,12 +525,12 @@ const copyRoomCode = () => {
       <div className="sticky top-16 z-10 bg-background/80 backdrop-blur-md border-b border-white/10 p-4">
         <div className="max-w-screen-xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/social-rooms')}
-              className="p-2 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
-            >
-              <ArrowLeft size={18} />
-            </button>
+          <button
+  onClick={handleBackToSocialRooms}
+  className="p-2 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
+>
+  <ArrowLeft size={18} />
+</button>
             <div>
               <h1 className="text-xl font-bold">{room.title}</h1>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
@@ -724,3 +757,4 @@ const copyRoomCode = () => {
 };
 
 export default Room;
+
