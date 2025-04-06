@@ -31,55 +31,60 @@ app.use('/api/history', historyRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/messages', messageRoutes);
 
+// Add this near the top of your server.js file
+// const http = require('http');
+// const { Server } = require('socket.io');
+
 // Create HTTP server
 const server = http.createServer(app);
-
-// Initialize Socket.io with CORS options
+const PORT=5050;
+// Initialize Socket.io
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:8080'],
-    methods: ['GET', 'POST'],
+    origin: "http://localhost:8080", // Your frontend URL
+    methods: ["GET", "POST"],
     credentials: true
   }
 });
 
+// Make io available to our routes
+app.set('io', io);
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
-
-  // Join room
+  
+  // Join a room
   socket.on('join_room', (roomId) => {
     socket.join(roomId);
-    console.log(`User ${socket.id} joined room: ${roomId}`);
+    console.log(`User ${socket.id} joined room ${roomId}`);
   });
-
-  // Leave room
+  
+  // Leave a room
   socket.on('leave_room', (roomId) => {
     socket.leave(roomId);
-    console.log(`User ${socket.id} left room: ${roomId}`);
+    console.log(`User ${socket.id} left room ${roomId}`);
   });
-
-  // Fix: Update the send_message handler to use the correct room property
-  socket.on('send_message', (data) => {
-    // Broadcast the message to all users in the room except the sender
-    socket.to(data.room._id || data.room).emit('receive_message', data);
-    console.log(`Message sent in room ${data.room._id || data.room}:`, data.text);
-  });
-
-  // Update song
-  socket.on('update_song', (data) => {
-    socket.to(data.roomId).emit('song_updated', data);
-    console.log(`Song updated in room ${data.roomId}`);
-  });
-
-  // Disconnect
+  
+  // Handle disconnect
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
+  
+  // Handle messages
+  socket.on('send_message', (message) => {
+    console.log('Message received:', message);
+    socket.to(message.room).emit('receive_message', message);
+  });
+  
+  // Handle song updates
+  socket.on('update_song', (data) => {
+    console.log('Song update received:', data);
+    socket.to(data.roomId).emit('song_updated', data);
+  });
 });
 
-// Change app.listen to server.listen
-const PORT = process.env.PORT || 5050;
+// Replace app.listen with server.listen
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

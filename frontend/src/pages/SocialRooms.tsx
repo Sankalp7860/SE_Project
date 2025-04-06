@@ -100,6 +100,19 @@ const SocialRooms = () => {
     }
   };
 
+  // Update the handleRoomClick function to join via room code
+const handleRoomClick = async (room) => {
+  // If the room is private, don't allow direct joining
+  if (room.isPrivate) {
+    toast.error('This is a private room. Please use the room code to join.');
+    setIsJoinModalOpen(true);
+    return;
+  }
+  
+  // Join the room using its code
+  await handleJoinRoom(room.code);
+};
+
   // Handle room join
   const handleJoinRoom = async (code: string) => {
     const token = localStorage.getItem('token');
@@ -281,7 +294,7 @@ const SocialRooms = () => {
               <RoomCard
                 key={room._id}
                 room={room}
-                onClick={() => navigate(`/room/${room._id}`)}
+                onClick={() => handleRoomClick(room)} 
               />
             ))
           ) : (
