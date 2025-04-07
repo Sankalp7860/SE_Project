@@ -1,7 +1,7 @@
 
 import { toast } from 'sonner';
 
-const API_KEY = 'AIzaSyCKpLO5dKPwx2h7p7KQb7cxhYu7jitxcBM';
+const API_KEY = 'AIzaSyDO3pQv4rywn2PHaLzTWLo47dRgCtcGXv4';
 const BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
 // Define types for the YouTube API responses
