@@ -261,6 +261,20 @@ const copyRoomCode = () => {
         }
       });
       
+      // Update the local room state with the new song information
+      if (room) {
+        setRoom({
+          ...room,
+          currentSong: {
+            id: song.id,
+            title: song.title,
+            artist: song.artist,
+            thumbnailUrl: song.thumbnailUrl,
+            timestamp: Date.now()
+          }
+        });
+      }
+      
       // Clear search results
       setSearchQuery('');
       setSearchResults([]);
@@ -583,12 +597,12 @@ const copyRoomCode = () => {
       {/* Main content */}
       <div className="flex-1 flex flex-col md:flex-row max-w-screen-xl mx-auto w-full">
         {/* Left side - Chat */}
-        <div className="w-full md:w-1/3 border-r border-white/10 flex flex-col h-[calc(100vh-8rem)]">
+        <div className="w-full md:w-1/3 border-r border-white/10 flex flex-col h-[calc(100vh-14rem)] relative">
           <div className="p-4 border-b border-white/10">
             <h2 className="text-lg font-medium">Chat</h2>
           </div>
           
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 mb-14">
             <div className="p-4 space-y-4">
               {messages.length > 0 ? (
                 messages.map((message) => (
@@ -611,7 +625,7 @@ const copyRoomCode = () => {
             </div>
           </ScrollArea>
           
-          <div className="p-4 border-t border-white/10">
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-background">
             <form 
               onSubmit={(e) => {
                 e.preventDefault();
@@ -638,7 +652,7 @@ const copyRoomCode = () => {
         </div>
         
         {/* Right side - Music */}
-        <div className="w-full md:w-2/3 flex flex-col h-[calc(100vh-8rem)]">
+        <div className="w-full md:w-2/3 flex flex-col h-[calc(100vh-12rem)]">
           {/* Current song */}
           <div className="p-4 border-b border-white/10">
             <h2 className="text-lg font-medium mb-4">
