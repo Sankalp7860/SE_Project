@@ -77,7 +77,7 @@ const SocialRooms = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5050/api/rooms', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rooms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,6 +99,19 @@ const SocialRooms = () => {
       toast.error('Failed to create room');
     }
   };
+
+  // Update the handleRoomClick function to join via room code
+const handleRoomClick = async (room) => {
+  // If the room is private, don't allow direct joining
+  if (room.isPrivate) {
+    toast.error('This is a private room. Please use the room code to join.');
+    setIsJoinModalOpen(true);
+    return;
+  }
+  
+  // Join the room using its code
+  await handleJoinRoom(room.code);
+};
 
   // Handle room join
   const handleJoinRoom = async (code: string) => {
@@ -281,7 +294,7 @@ const SocialRooms = () => {
               <RoomCard
                 key={room._id}
                 room={room}
-                onClick={() => navigate(`/room/${room._id}`)}
+                onClick={() => handleRoomClick(room)} 
               />
             ))
           ) : (

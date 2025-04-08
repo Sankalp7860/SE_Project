@@ -231,7 +231,7 @@ const copyRoomCode = () => {
       playSong(song.id, song.title, song.artist, song.thumbnailUrl);
       
       // Update the current song in the room
-      const response = await fetch(`http://localhost:5050/api/rooms/${roomId}/song`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rooms/${roomId}/song`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -261,6 +261,20 @@ const copyRoomCode = () => {
         }
       });
       
+      // Update the local room state with the new song information
+      if (room) {
+        setRoom({
+          ...room,
+          currentSong: {
+            id: song.id,
+            title: song.title,
+            artist: song.artist,
+            thumbnailUrl: song.thumbnailUrl,
+            timestamp: Date.now()
+          }
+        });
+      }
+      
       // Clear search results
       setSearchQuery('');
       setSearchResults([]);
@@ -268,6 +282,11 @@ const copyRoomCode = () => {
       console.error('Error updating current song:', error);
       toast.error('Failed to update current song');
     }
+  };
+
+  const handleBackToSocialRooms = () => {
+    // Call the leave room function before navigating
+    handleLeaveRoom();
   };
 
   // Leave room
@@ -340,17 +359,29 @@ const copyRoomCode = () => {
       console.error('Socket connection error:', error);
     });
     
-    // Add this event listener for receiving messages
+    // Improved message handling
     socketRef.current.on('receive_message', (newMessage) => {
       console.log('Received new message:', newMessage);
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
       
-      // Scroll to bottom when new message arrives
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      // Ensure the message has all required properties before adding to state
+      if (newMessage && newMessage._id) {
+        setMessages((prevMessages) => {
+          // Check if message already exists to prevent duplicates
+          const messageExists = prevMessages.some(msg => msg._id === newMessage._id);
+          if (messageExists) {
+            return prevMessages;
+          }
+          return [...prevMessages, newMessage];
+        });
+        
+        // Scroll to bottom when new message arrives
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     });
     
+    // Improved song update handling
     socketRef.current.on('song_updated', (data) => {
       console.log('Song updated:', data);
       if (!isOwner && data.song) {
@@ -360,7 +391,55 @@ const copyRoomCode = () => {
           data.song.artist || '',
           data.song.thumbnailUrl || ''
         );
+        
+        // Update the room data with the new song information
+        if (room) {
+          setRoom({
+            ...room,
+            currentSong: {
+              id: data.song.id,
+              title: data.song.title || '',
+              artist: data.song.artist || '',
+              thumbnailUrl: data.song.thumbnailUrl || '',
+              timestamp: Date.now()
+            }
+          });
+        }
       }
+    });
+    
+    // Add this event listener for room updates
+    socketRef.current.on('room_updated', () => {
+      console.log('Room data updated, refreshing...');
+      fetchRoomData();
+    });
+    
+    // Add this event listener for participant updates
+    // Update the participant_updated event handler in the useEffect hook
+    socketRef.current.on('participant_updated', (data) => {
+    console.log('Participant list updated:', data);
+    if (room && data.participants) {
+    setRoom(prevRoom => {
+    if (!prevRoom) return null;
+    return {
+    ...prevRoom,
+    participants: data.participants
+    };
+    });
+    }
+    });
+    
+    // Also update the room_updated event handler to ensure it properly refreshes the data
+    socketRef.current.on('room_updated', () => {
+    console.log('Room data updated, refreshing...');
+    fetchRoomData();
+    });
+    
+    // Add this event listener for room deletion
+    socketRef.current.on('room_deleted', () => {
+      console.log('Room has been deleted by the owner');
+      toast.info('This room has been deleted by the owner');
+      navigate('/social-rooms');
     });
     
     // Load initial data
@@ -460,12 +539,12 @@ const copyRoomCode = () => {
       <div className="sticky top-16 z-10 bg-background/80 backdrop-blur-md border-b border-white/10 p-4">
         <div className="max-w-screen-xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/social-rooms')}
-              className="p-2 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
-            >
-              <ArrowLeft size={18} />
-            </button>
+          <button
+  onClick={handleBackToSocialRooms}
+  className="p-2 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
+>
+  <ArrowLeft size={18} />
+</button>
             <div>
               <h1 className="text-xl font-bold">{room.title}</h1>
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
@@ -518,12 +597,12 @@ const copyRoomCode = () => {
       {/* Main content */}
       <div className="flex-1 flex flex-col md:flex-row max-w-screen-xl mx-auto w-full">
         {/* Left side - Chat */}
-        <div className="w-full md:w-1/3 border-r border-white/10 flex flex-col h-[calc(100vh-8rem)]">
+        <div className="w-full md:w-1/3 border-r border-white/10 flex flex-col h-[calc(100vh-14rem)] relative">
           <div className="p-4 border-b border-white/10">
             <h2 className="text-lg font-medium">Chat</h2>
           </div>
           
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 mb-14">
             <div className="p-4 space-y-4">
               {messages.length > 0 ? (
                 messages.map((message) => (
@@ -546,7 +625,7 @@ const copyRoomCode = () => {
             </div>
           </ScrollArea>
           
-          <div className="p-4 border-t border-white/10">
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-background">
             <form 
               onSubmit={(e) => {
                 e.preventDefault();
@@ -573,7 +652,7 @@ const copyRoomCode = () => {
         </div>
         
         {/* Right side - Music */}
-        <div className="w-full md:w-2/3 flex flex-col h-[calc(100vh-8rem)]">
+        <div className="w-full md:w-2/3 flex flex-col h-[calc(100vh-12rem)]">
           {/* Current song */}
           <div className="p-4 border-b border-white/10">
             <h2 className="text-lg font-medium mb-4">
@@ -692,3 +771,4 @@ const copyRoomCode = () => {
 };
 
 export default Room;
+

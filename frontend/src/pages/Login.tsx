@@ -18,11 +18,11 @@ const Login = () => {
     e.preventDefault();
     
     try {
-        const response = await fetch("http://localhost:5050/api/auth/login", {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),  // ✅ Ensure keys match backend expectations
-            credentials: "include",  // Ensure cookies and auth headers are sent properly
+            body: JSON.stringify({ email, password }),
+            credentials: "include",
         });
 
         const data = await response.json();
@@ -34,7 +34,7 @@ const Login = () => {
         toast.success('Welcome back!');
         navigate("/");
     } catch (error) {
-        console.error("Login Error:", error.message);  // Debugging log
+        console.error("Login Error:", error.message);
         toast.error(error.message || 'Login failed. Please check your credentials.');
     }
 };
