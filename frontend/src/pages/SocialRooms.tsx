@@ -32,8 +32,8 @@ const SocialRooms = () => {
 
     try {
       const url = mood 
-        ? `http://localhost:5050/api/rooms?mood=${mood}`
-        : 'http://localhost:5050/api/rooms';
+        ? `${import.meta.env.VITE_API_URL}/api/rooms?mood=${mood}`
+        : `${import.meta.env.VITE_API_URL}/api/rooms`;
         
       const response = await fetch(url, {
         method: 'GET',
@@ -123,7 +123,7 @@ const handleRoomClick = async (room) => {
     }
 
     try {
-      const response = await fetch('http://localhost:5050/api/rooms/join', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rooms/join`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

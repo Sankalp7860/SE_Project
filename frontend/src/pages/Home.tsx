@@ -119,7 +119,7 @@ const Home = () => {
           stream.getTracks().forEach(track => track.stop());
           
           // Send to backend
-          const response = await fetch('http://localhost:3030/detect-emotion', {
+          const response = await fetch(`${import.meta.env.MODEL_API_URL}/detect-emotion`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

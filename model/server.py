@@ -5,11 +5,20 @@ import base64
 from deepface import DeepFace
 import requests
 from flask_cors import CORS
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
 
-TMDB_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJlZTJhYTBjODE1NTQzNzkxNjIyMmIxZmYyOWE3ZGI4NiIsIm5iZiI6MTc0MDkyODAzOS41MTIsInN1YiI6IjY3YzQ3NDI3MTExY2RkNGVkOGI0YWUyMyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.nmjaNuIPThzM0BrtWckOXBERsIELOoWImWjXHQ9mxqA"
+# Configure CORS with environment variables
+allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:8080').split(',')
+CORS(app, resources={r"/*": {"origins": allowed_origins}})
+
+# Get API key from environment variable
+TMDB_API_KEY = os.getenv('TMDB_API_KEY')
 
 # Emotion-to-genre mapping
 GENRE_MAP = {
@@ -49,5 +58,6 @@ def detect_emotion():
 
 if __name__ == "__main__":
     print("Server starting...")
-    app.run(host="0.0.0.0", port=3030, debug=True)
+    port = int(os.getenv('PORT', 3030))
+    app.run(host="0.0.0.0", port=port, debug=os.getenv('FLASK_ENV') == 'development')
     print("Server running")

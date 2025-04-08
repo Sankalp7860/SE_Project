@@ -76,7 +76,7 @@ const Room = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5050/api/rooms/${roomId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rooms/${roomId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -117,7 +117,7 @@ const Room = () => {
     if (!token || !roomId) return;
 
     try {
-      const response = await fetch(`http://localhost:5050/api/messages/${roomId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${roomId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -148,7 +148,7 @@ const Room = () => {
     }
     
     try {
-      const response = await fetch(`http://localhost:5050/api/messages/${roomId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${roomId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -302,7 +302,7 @@ const copyRoomCode = () => {
     }
 
     try {
-      await fetch(`http://localhost:5050/api/rooms/${roomId}/leave`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/rooms/${roomId}/leave`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -345,7 +345,7 @@ const copyRoomCode = () => {
     if (!user || !roomId) return;
     
     // Fix: Use the correct socket.io connection with proper options
-    socketRef.current = io('http://localhost:5050', {
+    socketRef.current = io(`${import.meta.env.VITE_API_URL}`, {
       transports: ['websocket'],
       withCredentials: true
     });
