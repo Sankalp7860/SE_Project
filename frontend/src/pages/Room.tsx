@@ -231,7 +231,7 @@ const copyRoomCode = () => {
       playSong(song.id, song.title, song.artist, song.thumbnailUrl);
       
       // Update the current song in the room
-      const response = await fetch(`http://localhost:5050/api/rooms/${roomId}/song`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rooms/${roomId}/song`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

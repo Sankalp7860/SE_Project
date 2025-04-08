@@ -77,7 +77,7 @@ const SocialRooms = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5050/api/rooms', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rooms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

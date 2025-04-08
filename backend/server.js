@@ -15,9 +15,11 @@ const app = express();
 app.use(express.json());
 connectDB();
 
-// Fix: Remove duplicate CORS configuration and use a single one
+// Use environment variables for CORS configuration
+const allowedOrigins = process.env.CLIENT_ORIGIN ? process.env.CLIENT_ORIGIN.split(',') : ['http://localhost:8080'];
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:8080'],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -31,17 +33,14 @@ app.use('/api/history', historyRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/messages', messageRoutes);
 
-// Add this near the top of your server.js file
-// const http = require('http');
-// const { Server } = require('socket.io');
-
 // Create HTTP server
 const server = http.createServer(app);
-const PORT=5050;
+const PORT = process.env.PORT || 5050;
+
 // Initialize Socket.io
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:8080", // Your frontend URL
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true
   }
