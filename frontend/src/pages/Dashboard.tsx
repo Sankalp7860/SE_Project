@@ -26,7 +26,7 @@ const Dashboard = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5050/api/history', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/history`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -59,7 +59,7 @@ const Dashboard = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5050/api/history', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/history`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
